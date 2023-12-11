@@ -7,7 +7,6 @@
 tempCodeRunnerFile.py
 *.csv
 *.json
-*.txt
 pass.txt
 /raw
 /silver

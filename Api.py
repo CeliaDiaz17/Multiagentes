@@ -9,12 +9,6 @@ from fastapi.responses import JSONResponse
 from Connect import Connect
 from fastapi.responses import HTMLResponse
 import json
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.express as px
-import pandas as pd
-import plotly.graph_objects as go
-
 
 # FastAPI
 app = FastAPI()
@@ -37,9 +31,7 @@ def show_options():
         ("/rates/age_mean", "Edad media de los suicidios por año"),
         ("/rates/sex_stats", "Porcentaje de Mujeres y Hombres suicidados por año"),
         ("/rates/race_stats", "Porcentaje de personas suicidadas por raza y año"),
-        ("/rates/age_ranges", "Estadísticas por rangos de edad y por año"),
-        ("/rates/suicide_rates", "Ratios de suicidio en EEUU por año"),
-        ("/rates/unemployment_data", "Tasas de desempleo")
+        ("/rates/age_stats", "Estadísticas por edad y por año")
     ]
 
     formatted_output = ["<h2>Selecciona una opción</h2><ul>"]
@@ -54,54 +46,8 @@ def show_options():
     return HTMLResponse(content=result_string)
 
 @app.get("/rates/age_mean")
-def age_mean_stats():
-    data = create_msg_age_mean()
-    sorted_age_means_by_year = data[0]
-    message = data[1]
-
-    graph_link = "/rates/age_mean/graph"
-    
-    formatted_output = [
-        f"<h2>{message['message']}</h2>",
-        f"<p><a href='{graph_link}'>Ver Gráfico de Edad Media</a></p>"
-    ]
-
-    for year, data in message["age_means_by_year"].items():
-        formatted_output.append(f"<p style='margin: 1px;'><strong>Año {year}:</strong></p>")
-        formatted_output.append(f"<p style='margin: 1px;'>- Edad media = {data['mean_age']:.2f}</p>")
-        formatted_output.append("<br>")  # Utiliza <br> para los saltos de línea
-
-    result_string = "\n".join(formatted_output)
-
-    return HTMLResponse(content=result_string)
-
-@app.get("/rates/age_mean/graph")
-def age_mean_graph():
-    data = create_msg_age_mean()
-    sorted_age_means_by_year = data[0]
-    message = data[1]
-
-    # Crear el gráfico
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=list(sorted_age_means_by_year.keys()), y=[data['mean_age'] for data in sorted_age_means_by_year.values()], mode='lines+markers', name='Edad Media'))
-
-    # Configurar el diseño del gráfico
-    fig.update_layout(title='Media de Edad por Año', xaxis_title='Año', yaxis_title='Edad Media')
-
-    # Convertir el gráfico a HTML
-    graph_html = fig.to_html(full_html=False)
-
-    # Formatear el resultado con el gráfico
-    formatted_output = [
-        f"<h2>{message['message']}</h2>",
-        f"<div>{graph_html}</div>"
-    ]
-
-    result_string = "\n".join(formatted_output)
-
-    return HTMLResponse(content=result_string)
-
-def create_msg_age_mean():
+def calculate_age_mean():
+    # Inicia una sesión de la base de datos
     db = Connect()
 
     # Realiza la consulta para obtener la media de edad por año
@@ -113,55 +59,20 @@ def create_msg_age_mean():
 
     message = {"message": "MEDIA DE EDAD POR AÑO", "age_means_by_year": sorted_age_means_by_year}
 
-    return [sorted_age_means_by_year, message]
-
-
-@app.get("/rates/sex_stats")
-def sex_mean_stats():
-    message = create_msg_sex_stats()
-
     formatted_output = [f"<h2>{message['message']}</h2>"]
 
-    # Agrega un enlace al gráfico con margen inferior
-    formatted_output.append("<p style='margin: 1px 0 10px;'><a href='/rates/sex_stats/graph'>Ver gráfico</a></p>")
-    
-    for year, percentages in message["sex_stats_by_year"].items():
-        formatted_output.append(f"<p style='margin: 1px;'><strong>{year}:</strong></p>")
-        formatted_output.append(f"<p style='margin: 1px;'>- Hombres = {percentages['male_percentage']:.2f}%</p>")
-        formatted_output.append(f"<p style='margin: 1px;'>- Mujeres = {percentages['female_percentage']:.2f}%</p>")
+    for year, data in message["age_means_by_year"].items():
+        formatted_output.append(f"<p style='margin: 1px;'><strong>Año {year}:</strong></p>")
+        formatted_output.append(f"<p style='margin: 1px;'>- Edad media = {data['mean_age']:.2f}</p>")
         formatted_output.append("<br>")  # Utiliza <br> para los saltos de línea
 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
 
-@app.get("/rates/sex_stats/graph")
-def sex_stats_graph():
-    # Lógica para obtener los datos
-    data = create_msg_sex_stats()
 
-    # Convertir las claves a una lista
-    years = list(data["sex_stats_by_year"].keys())
-
-    # Crear el DataFrame
-    df = pd.DataFrame(data["sex_stats_by_year"]).T  # Transponer para tener años como índice
-
-    # Crear el gráfico de líneas para mujeres y hombres en el mismo gráfico
-    fig_combined = px.line(
-        df,
-        x=df.index,
-        y=["female_percentage", "male_percentage"],
-        title="Porcentaje de Mujeres y Hombres por año",
-        labels={"value": "Porcentaje"},
-        color_discrete_map={"female_percentage": "#FF00FF", "male_percentage": "blue"},
-        line_shape="linear"
-    )
-
-    # Devolver el gráfico combinado en formato HTML
-    return HTMLResponse(content=fig_combined.to_html(full_html=False))
-
-
-def create_msg_sex_stats():
+@app.get("/rates/sex_stats")
+def calculate_sex_mean():
     # Inicia una sesión de la base de datos
     db = Connect()
 
@@ -182,66 +93,20 @@ def create_msg_sex_stats():
     message = {"message": "Porcentaje de mujeres y hombres por año", "sex_stats_by_year": sex_stats_by_year}
     message["sex_stats_by_year"] = {str(year): values for year, values in sorted(message["sex_stats_by_year"].items())}
 
-    return message
+    formatted_output = [f"<h2>{message['message']}</h2>"]
 
-@app.get("/rates/race_stats")
-def race_stats():
-    sorted_race_percentage_by_year = create_msg_race()
-    
-    # Agrega el enlace al gráfico
-    graph_link = '<a href="/rates/race_stats/graph">Ver gráfico</a>'
-    formatted_output = [f"<h2>Porcentaje por raza</h2>{graph_link}"]
-
-    for year, race_percentages in sorted_race_percentage_by_year.items():
-        formatted_output.append(f"<p><strong>{year}:</strong></p>")
-        for race, percentage in race_percentages.items():
-            formatted_output.append(f"<p>{race}: {percentage:.2f}%</p>")
+    for year, percentages in message["sex_stats_by_year"].items():
+        formatted_output.append(f"<p style='margin: 1px;'><strong>{year}:</strong></p>")
+        formatted_output.append(f"<p style='margin: 1px;'>- Hombres = {percentages['male_percentage']:.2f}%</p>")
+        formatted_output.append(f"<p style='margin: 1px;'>- Mujeres = {percentages['female_percentage']:.2f}%</p>")
+        formatted_output.append("<br>")  # Utiliza <br> para los saltos de línea
 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
 
-@app.get("/rates/race_stats/graph")
-def race_graph():
-    # Lógica para obtener los datos
-    data = create_msg_race()
-
-    # Convertir los datos a un formato adecuado para Plotly Express
-    years = []
-    races = []
-    percentages = []
-
-    for year, race_percentages in data.items():
-        for race, percentage in race_percentages.items():
-            years.append(year)
-            races.append(race)
-            percentages.append(percentage)
-
-    # Crear el gráfico de puntos unidos por línea
-    fig = px.line(
-        x=years,
-        y=percentages,
-        color=races,
-        labels={"x": "Año", "y": "Porcentaje"},
-        title="Porcentaje de instancias por raza y año",
-    )
-
-    # Agregar la línea gris discontinua en y=14.28
-    fig.add_shape(
-        go.layout.Shape(
-            type="line",
-            x0=min(years),  # Puedes ajustar estos valores según tus necesidades
-            x1=max(years),
-            y0=14.28,
-            y1=14.28,
-            line=dict(color="gray", dash="dash"),
-        )
-    )
-
-    # Devuelve el gráfico en formato HTML
-    return HTMLResponse(content=fig.to_html(full_html=False))
-
-def create_msg_race():
+@app.get("/rates/race_stats")
+def calculate_race_stats():
     # Inicia una sesión de la base de datos
     db = Connect()
 
@@ -286,54 +151,20 @@ def create_msg_race():
     # Ordena el diccionario por año (de más antiguo a más nuevo)
     sorted_race_percentage_by_year = dict(sorted(race_percentage_by_year.items()))
 
-    return sorted_race_percentage_by_year
+    formatted_output = [f"<h2>Porcentaje por raza</h2>"]
 
-@app.get("/rates/age_ranges")
-def age_ranges():
-    sorted_age_percentage_by_year = create_msg_age_ranges()
-
-    # Agrega el enlace al gráfico
-    graph_link = '<a href="/rates/age_ranges/graph">Ver gráfico</a>'
-    formatted_output = [f"<h2>Porcentaje por rango de edad</h2>{graph_link}"]
-
-    for year, age_percentages in sorted_age_percentage_by_year.items():
+    for year, race_percentages in sorted_race_percentage_by_year.items():
         formatted_output.append(f"<p><strong>{year}:</strong></p>")
-        for age_range, percentage in age_percentages.items():
-            formatted_output.append(f"<p>{age_range}: {percentage:.2f}%</p>")
+        for race, percentage in race_percentages.items():
+            formatted_output.append(f"<p>{race}: {percentage:.2f}%</p>")
 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
 
-@app.get("/rates/age_ranges/graph")
-def age_graph():
-    # Lógica para obtener los datos
-    data = create_msg_age_ranges()
 
-    # Convertir los datos a un formato adecuado para Plotly Express
-    years = []
-    age_ranges = []
-    percentages = []
-
-    for year, age_percentages in data.items():
-        for age_range, percentage in age_percentages.items():
-            years.append(year)
-            age_ranges.append(age_range)
-            percentages.append(percentage)
-
-    # Crear el gráfico de barras apiladas
-    fig = px.bar(
-        x=years,
-        y=percentages,
-        color=age_ranges,
-        labels={"x": "Año", "y": "Porcentaje"},
-        title="Porcentaje de instancias por rango de edad y año",
-    )
-
-    # Devuelve el gráfico en formato HTML
-    return HTMLResponse(content=fig.to_html(full_html=False))
-
-def create_msg_age_ranges():
+@app.get("/rates/age_stats")
+def calculate_age_stats():
     # Inicia una sesión de la base de datos
     db = Connect()
 
@@ -372,7 +203,16 @@ def create_msg_age_ranges():
         total_instances = sum(age_counts.values())
         age_percentage_by_year[year] = {age_range: (count / total_instances) * 100.0 for age_range, count in age_counts.items()}
 
-    return age_percentage_by_year
+    formatted_output = [f"<h2>Porcentaje por edad</h2>"]
+
+    for year, age_percentages in age_percentage_by_year.items():
+        formatted_output.append(f"<p><strong>{year}:</strong></p>")
+        for age_range, percentage in age_percentages.items():
+            formatted_output.append(f"<p>{age_range} años: {percentage:.2f}%</p>")
+
+    result_string = "\n".join(formatted_output)
+
+    return HTMLResponse(content=result_string)
 
 @app.get("/rates/suicide_rates")
 def calculate_suicide_rates():
@@ -382,7 +222,7 @@ def calculate_suicide_rates():
     # Realiza la consulta para obtener la media del RATE por año
     query_result = db.execute_query("""
         SELECT YEAR, AVG(RATE) as mean_rate
-        FROM SCHEMA_GOLD.gold_suicide_rate_and_unemployment_data
+        FROM SCHEMA_GOLD.gold_suicide_rate_data
         GROUP BY YEAR
     """)
 
@@ -395,158 +235,11 @@ def calculate_suicide_rates():
     sorted_suicide_rates = dict(sorted(suicide_rates_by_year.items()))
 
     for year, mean_rate in sorted_suicide_rates.items():
-        # Verifica si mean_rate es None antes de formatear
-        if mean_rate is not None:
-            formatted_output.append(f"<p><strong>{year}:</strong> Media de tasa = {mean_rate:.2f}</p>")
+        formatted_output.append(f"<p><strong>{year}:</strong> Media de tasa = {mean_rate:.2f}</p>")
 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
-
-@app.get("/rates/unemployment_data")
-def unemployment_data():
-    sorted_unemployment_data = create_msg_unemployment()
-
-    graph_link = '<a href="/rates/unemployment_data/graphs">Ver gráfico</a>'
-
-    # Formatea los resultados en HTML
-    formatted_output = [f"<h2>Estadísticas de desempleo por año</h2>{graph_link}"]
-
-    for year, stats in sorted_unemployment_data.items():
-        formatted_output.append(f"<p><strong>{year}:</strong></p>")
-        formatted_output.append(f"<p>Hombres: {stats['mean_men']:.2f}%</p>")
-        formatted_output.append(f"<p>Mujeres: {stats['mean_women']:.2f}%</p>")
-        formatted_output.append(f"<p>Primary school: {stats['primary_school']:.2f}%</p>")
-        formatted_output.append(f"<p>High school: {stats['high_school']:.2f}%</p>")
-        formatted_output.append(f"<p>Associates degree: {stats['associates_degree']:.2f}%</p>")
-        formatted_output.append(f"<p>Professional degree: {stats['professional_degree']:.2f}%</p>")
-        formatted_output.append(f"Blancos: {stats['white']:.2f}%</p>")
-        formatted_output.append(f"<p>Racializados: {stats['mean_ethnicity']:.2f}%</p>")
-        formatted_output.append(f"<p>TOTAL: {stats['total_mean']:.2f}%</p>")
-        # Agrega más líneas según sea necesario
-
-    result_string = "\n".join(formatted_output)
-
-    return HTMLResponse(content=result_string)
-
-@app.get("/rates/unemployment_data/graphs")
-def unemployment_graphs():
-    data = create_msg_unemployment()
-
-    # Convertir los datos a un formato adecuado para Plotly Express
-    years = []
-    men_values = []
-    women_values = []
-    primary_school_values = []
-    high_school_values = []
-    associates_degree_values = []
-    professional_degree_values = []
-    white_values = []
-    ethnicity_values = []
-
-    for year, values in data.items():
-        years.append(year)
-        men_values.append(values["mean_men"])
-        women_values.append(values["mean_women"])
-        primary_school_values.append(values["primary_school"])
-        high_school_values.append(values["high_school"])
-        associates_degree_values.append(values["associates_degree"])
-        professional_degree_values.append(values["professional_degree"])
-        white_values.append(values["white"])
-        ethnicity_values.append(values["mean_ethnicity"])
-
-    # Crear los tres gráficos de puntos unidos por línea
-    fig_men_women = px.line(
-        x=years,
-        y=[men_values, women_values],
-        color_discrete_sequence=["blue", "pink"],
-        labels={"x": "Año", "y": "Porcentaje", "color": "Género"},
-        title="Tasa de desempleo para Hombres y Mujeres por año",
-    )
-    fig_men_women.for_each_trace(lambda t: t.update(name="Hombres") if t.name == "wide_variable_0" else t.update(name="Mujeres"))
-
-    fig_education = px.line(
-        x=years,
-        y=[primary_school_values, high_school_values, associates_degree_values, professional_degree_values],
-        color_discrete_sequence=["green", "orange", "red", "purple"],
-        labels={"x": "Año", "y": "Porcentaje", "color": "Nivel educativo"},
-        title="Tasa de desempleo por nivel educativo por año",
-    )
-    fig_education.for_each_trace(lambda t: t.update(name="Primaria") if t.name == "wide_variable_0" else t.update(name="Secundaria") if t.name == "wide_variable_1" else t.update(name="Técnico") if t.name == "wide_variable_2" else t.update(name="Profesional") if t.name == "wide_variable_3" else None)
-
-    fig_ethnicity = px.line(
-        x=years,
-        y=[white_values, ethnicity_values],
-        color_discrete_sequence=["gray", "brown"],
-        labels={"x": "Año", "y": "Porcentaje", "color": "Etnia"},
-        title="Tasa de desempleo por etnia por año",
-    )
-    fig_ethnicity.for_each_trace(lambda t: t.update(name="Blancos") if t.name == "wide_variable_0" else t.update(name="Racializados") if t.name == "wide_variable_1" else None)
-
-    # Combina los gráficos en un solo HTML
-    combined_html = f"{fig_men_women.to_html(full_html=False)}<br>{fig_education.to_html(full_html=False)}<br>{fig_ethnicity.to_html(full_html=False)}"
-    
-    # Devuelve los gráficos combinados en formato HTML
-    return HTMLResponse(content=combined_html)
-
-def create_msg_unemployment():
-    db = Connect()
-
-    query_result = db.execute_query("""
-        SELECT
-            YEAR,
-            AVG(MEN) AS MEN,
-            AVG(WOMEN) AS WOMEN,
-            AVG(PRIMARY_SCHOOL) AS PRIMARY_SCHOOL,
-            AVG(HIGH_SCHOOL) AS HIGH_SCHOOL,
-            AVG(ASSOCIATES_DEGREE) AS ASSOCIATES_DEGREE,
-            AVG(PROFESSIONAL_DEGREE) AS PROFESSIONAL_DEGREE,
-            AVG(WHITE) AS WHITE,
-            AVG(BLACK) AS BLACK,
-            AVG(ASIAN) AS ASIAN,
-            AVG(HISPANIC) AS HISPANIC
-        FROM
-            SCHEMA_GOLD.gold_suicide_rate_and_unemployment_data
-        GROUP BY
-            YEAR""")
-    
-    stats_by_year = {}
-    for row in query_result:
-        year = row[0]
-        if any(value is None for value in row[1:]): continue
-        men = row[1]
-        women = row[2]
-        primary_school = row[3]
-        high_school = row[4]
-        associates_degree = row[5]
-        professional_degree = row[6]
-        white = row[7]
-        black = row[8]
-        asian = row[9]
-        hispanic = row[10]
-
-        # Realiza cálculos adicionales según sea necesario
-        total = primary_school + high_school + associates_degree + professional_degree + white + black + asian + hispanic + men + women
-        total_ethnicity = black + asian + hispanic
-
-        # Agrega los resultados a un diccionario
-        stats_by_year[year] = {
-            "mean_men": men,
-            "mean_women": women,
-            "primary_school": primary_school,
-            "high_school": high_school,
-            "associates_degree": associates_degree, 
-            "professional_degree": professional_degree,
-            "white": white,
-            "mean_ethnicity": total_ethnicity / 4, # Promedio de la etnia
-            "total_mean": total/10
-            # Agrega más cálculos según sea necesario
-        }
-
-    sorted_unemployment_data = dict(sorted(stats_by_year.items()))
-
-    return sorted_unemployment_data
-
 
 """ @app.get("/{variable1}/{variable2}")
 def dynamic_route(variable1: str, variable2: str):
