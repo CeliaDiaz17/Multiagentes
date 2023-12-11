@@ -1,2 +1,0 @@
-user=SCHEMA_GOLD
-passaword=-5kZ6j9fNYKJU_j
