@@ -34,12 +34,11 @@ class ItemResponse(ItemCreate):
 @app.get("/rates")
 def show_options():
     options = [
-        ("/rates/age_mean", "Edad media de los suicidios por año"),
-        ("/rates/sex_stats", "Porcentaje de Mujeres y Hombres suicidados por año"),
-        ("/rates/race_stats", "Porcentaje de personas suicidadas por raza y año"),
-        ("/rates/age_ranges", "Estadísticas por rangos de edad y por año"),
-        ("/rates/suicide_rates", "Ratios de suicidio en EEUU por año"),
-        ("/rates/unemployment_data", "Tasas de desempleo")
+        ("/rates/age_mean/graph", "Edad media de los suicidios por año"),
+        ("/rates/sex_stats/graph", "Porcentaje de Mujeres y Hombres suicidados por año"),
+        ("/rates/race_stats/graph", "Porcentaje de personas suicidadas por raza y año"),
+        ("/rates/age_ranges/graph", "Estadísticas por rangos de edad y por año"),
+        ("/rates/unemployment_data/graphs", "Tasas de desempleo")
     ]
 
     formatted_output = ["<h2>Selecciona una opción</h2><ul>"]
@@ -53,17 +52,18 @@ def show_options():
 
     return HTMLResponse(content=result_string)
 
-@app.get("/rates/age_mean")
+@app.get("/rates/age_mean/stats")
 def age_mean_stats():
     data = create_msg_age_mean()
     sorted_age_means_by_year = data[0]
     message = data[1]
 
+    menu_link = "/rates"
     graph_link = "/rates/age_mean/graph"
     
     formatted_output = [
         f"<h2>{message['message']}</h2>",
-        f"<p><a href='{graph_link}'>Ver Gráfico de Edad Media</a></p>"
+        f"<p><a href='{graph_link}'>Ver Gráfico de Edad Media</a></p>",
     ]
 
     for year, data in message["age_means_by_year"].items():
@@ -71,6 +71,7 @@ def age_mean_stats():
         formatted_output.append(f"<p style='margin: 1px;'>- Edad media = {data['mean_age']:.2f}</p>")
         formatted_output.append("<br>")  # Utiliza <br> para los saltos de línea
 
+    formatted_output.append(f"<p><a href='{menu_link}'>Volver al menu</a></p>") 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
@@ -81,6 +82,8 @@ def age_mean_graph():
     sorted_age_means_by_year = data[0]
     message = data[1]
 
+    graph_link = "/rates/age_mean/stats"
+    menu_link = "/rates"
     # Crear el gráfico
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=list(sorted_age_means_by_year.keys()), y=[data['mean_age'] for data in sorted_age_means_by_year.values()], mode='lines+markers', name='Edad Media'))
@@ -94,7 +97,9 @@ def age_mean_graph():
     # Formatear el resultado con el gráfico
     formatted_output = [
         f"<h2>{message['message']}</h2>",
+        f"<p><a href='{graph_link}'>Estadisticas de edad media</a></p>",
         f"<div>{graph_html}</div>"
+        f"<p><a href='{menu_link}'>Volver al menu</a></p>",
     ]
 
     result_string = "\n".join(formatted_output)
@@ -116,21 +121,24 @@ def create_msg_age_mean():
     return [sorted_age_means_by_year, message]
 
 
-@app.get("/rates/sex_stats")
+@app.get("/rates/sex_stats/stats")
 def sex_mean_stats():
     message = create_msg_sex_stats()
 
-    formatted_output = [f"<h2>{message['message']}</h2>"]
+    menu_link = "/rates"
+    graph_link = "/rates/sex_stats/graph"
+    formatted_output = [
+        f"<h2>{message['message']}</h2>",
+        f"<a href={graph_link}>Ver gráfico</a></p>"
+        ]
 
-    # Agrega un enlace al gráfico con margen inferior
-    formatted_output.append("<p style='margin: 1px 0 10px;'><a href='/rates/sex_stats/graph'>Ver gráfico</a></p>")
-    
     for year, percentages in message["sex_stats_by_year"].items():
         formatted_output.append(f"<p style='margin: 1px;'><strong>{year}:</strong></p>")
         formatted_output.append(f"<p style='margin: 1px;'>- Hombres = {percentages['male_percentage']:.2f}%</p>")
         formatted_output.append(f"<p style='margin: 1px;'>- Mujeres = {percentages['female_percentage']:.2f}%</p>")
         formatted_output.append("<br>")  # Utiliza <br> para los saltos de línea
 
+    formatted_output.append(f"<p><a href='{menu_link}'>Volver al menu</a></p>") 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
@@ -156,9 +164,20 @@ def sex_stats_graph():
         color_discrete_map={"female_percentage": "#FF00FF", "male_percentage": "blue"},
         line_shape="linear"
     )
+    
+    # Dentro de la función sex_stats_graph
+    html_content = """
+    <h1>Porcentaje de Mujeres y Hombres por año</h1>
+    <p><a href="/rates/sex_stats/stats">Ver estadísticas detalladas</a></p>
+    """  # Título y enlace a las estadísticas detalladas
 
-    # Devolver el gráfico combinado en formato HTML
-    return HTMLResponse(content=fig_combined.to_html(full_html=False))
+    html_content += fig_combined.to_html(full_html=False)  # Agregar el HTML del gráfico
+
+    menu_link = '/rates'
+    html_content += f"<p><a href='{menu_link}'>Volver al menú</a></p>"  # Agregar el enlace para volver al menú al final
+
+    # Devolver el HTML actualizado
+    return HTMLResponse(content=html_content)
 
 
 def create_msg_sex_stats():
@@ -184,7 +203,7 @@ def create_msg_sex_stats():
 
     return message
 
-@app.get("/rates/race_stats")
+@app.get("/rates/race_stats/stats")
 def race_stats():
     sorted_race_percentage_by_year = create_msg_race()
     
@@ -197,6 +216,8 @@ def race_stats():
         for race, percentage in race_percentages.items():
             formatted_output.append(f"<p>{race}: {percentage:.2f}%</p>")
 
+    menu_link = '/rates'
+    formatted_output.append(f"<p><a href='{menu_link}'>Volver al menu</a></p>") 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
@@ -237,9 +258,17 @@ def race_graph():
             line=dict(color="gray", dash="dash"),
         )
     )
+    # Obtener el HTML del gráfico
+    html_content = fig.to_html(full_html=False)
 
-    # Devuelve el gráfico en formato HTML
-    return HTMLResponse(content=fig.to_html(full_html=False))
+    # Agregar el título y los enlaces al HTML
+    stats_link = '/rates/race_stats/stats'
+    menu_link = '/rates'
+    html_content = f"<h1>Porcentaje de instancias por raza y año</h1><p><a href='{stats_link}'>Ver estadísticas</a></p>" + html_content
+    html_content += f"<p><a href='{menu_link}'>Volver al menú</a></p>"  # Agregar el enlace para volver al menú al final
+
+    # Devolver el HTML actualizado
+    return HTMLResponse(content=html_content)
 
 def create_msg_race():
     # Inicia una sesión de la base de datos
@@ -288,7 +317,7 @@ def create_msg_race():
 
     return sorted_race_percentage_by_year
 
-@app.get("/rates/age_ranges")
+@app.get("/rates/age_ranges/stats")
 def age_ranges():
     sorted_age_percentage_by_year = create_msg_age_ranges()
 
@@ -301,6 +330,8 @@ def age_ranges():
         for age_range, percentage in age_percentages.items():
             formatted_output.append(f"<p>{age_range}: {percentage:.2f}%</p>")
 
+    menu_link = '/rates'
+    formatted_output.append(f"<p><a href='{menu_link}'>Volver al menu</a></p>") 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
@@ -330,8 +361,17 @@ def age_graph():
         title="Porcentaje de instancias por rango de edad y año",
     )
 
-    # Devuelve el gráfico en formato HTML
-    return HTMLResponse(content=fig.to_html(full_html=False))
+    # Obtener el HTML del gráfico
+    html_content = fig.to_html(full_html=False)
+
+    # Agregar el enlace a las estadísticas y el enlace para volver al menú al HTML
+    stats_link = '/rates/age_ranges/stats'
+    menu_link = '/rates'
+    html_content = f"<h1>Porcentaje de instancias por rango de edad y año</h1><p><a href='{stats_link}'>Ver estadísticas</a></p>" + html_content
+    html_content += f"<p><a href='{menu_link}'>Volver al menú</a></p>"  # Agregar el enlace para volver al menú al final
+
+    # Devolver el HTML actualizado
+    return HTMLResponse(content=html_content)
 
 def create_msg_age_ranges():
     # Inicia una sesión de la base de datos
@@ -374,36 +414,7 @@ def create_msg_age_ranges():
 
     return age_percentage_by_year
 
-@app.get("/rates/suicide_rates")
-def calculate_suicide_rates():
-    # Inicia una sesión de la base de datos
-    db = Connect()
-
-    # Realiza la consulta para obtener la media del RATE por año
-    query_result = db.execute_query("""
-        SELECT YEAR, AVG(RATE) as mean_rate
-        FROM SCHEMA_GOLD.gold_suicide_rate_and_unemployment_data
-        GROUP BY YEAR
-    """)
-
-    # Procesa los resultados de la consulta
-    suicide_rates_by_year = {row[0]: row[1] for row in query_result}
-
-    formatted_output = [f"<h2>Media de Tasa de Suicidios por Año</h2>"]
-
-    # Ordena los años de menor a mayor
-    sorted_suicide_rates = dict(sorted(suicide_rates_by_year.items()))
-
-    for year, mean_rate in sorted_suicide_rates.items():
-        # Verifica si mean_rate es None antes de formatear
-        if mean_rate is not None:
-            formatted_output.append(f"<p><strong>{year}:</strong> Media de tasa = {mean_rate:.2f}</p>")
-
-    result_string = "\n".join(formatted_output)
-
-    return HTMLResponse(content=result_string)
-
-@app.get("/rates/unemployment_data")
+@app.get("/rates/unemployment_data/stats")
 def unemployment_data():
     sorted_unemployment_data = create_msg_unemployment()
 
@@ -425,6 +436,8 @@ def unemployment_data():
         formatted_output.append(f"<p>TOTAL: {stats['total_mean']:.2f}%</p>")
         # Agrega más líneas según sea necesario
 
+    menu_link = '/rates'
+    formatted_output.append(f"<p><a href='{menu_link}'>Volver al menu</a></p>") 
     result_string = "\n".join(formatted_output)
 
     return HTMLResponse(content=result_string)
@@ -485,7 +498,13 @@ def unemployment_graphs():
 
     # Combina los gráficos en un solo HTML
     combined_html = f"{fig_men_women.to_html(full_html=False)}<br>{fig_education.to_html(full_html=False)}<br>{fig_ethnicity.to_html(full_html=False)}"
-    
+
+    # Agregar el enlace a las estadísticas y el enlace para volver al menú al HTML
+    stats_link = '/rates/unemployment_data/stats'
+    menu_link = '/rates'
+    combined_html = f"<h1>Tasa de desempleo</h1><p><a href='{stats_link}'>Ver estadísticas</a></p>" + combined_html
+    combined_html += f"<p><a href='{menu_link}'>Volver al menú</a></p>"  # Agregar el enlace para volver al menú al final
+
     # Devuelve los gráficos combinados en formato HTML
     return HTMLResponse(content=combined_html)
 
@@ -546,10 +565,3 @@ def create_msg_unemployment():
     sorted_unemployment_data = dict(sorted(stats_by_year.items()))
 
     return sorted_unemployment_data
-
-
-""" @app.get("/{variable1}/{variable2}")
-def dynamic_route(variable1: str, variable2: str):
-    # Realizar acciones en función de las variables recibidas
-    result = {"variable1": variable1, "variable2": variable2}
-    return result  """
