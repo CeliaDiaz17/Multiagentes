@@ -1,8 +1,0 @@
-oracledb
-fastapi
-pydantic
-pandas
-uvicorn
-plotly
-python-multipart
-react

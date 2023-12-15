@@ -5,19 +5,21 @@ import sys
 import oracledb
 import pandas as pd
 
+
 def ddbb_connection_decorator(func):
     def wrapper(*args, **kwargs):
-        conexion_db = Connect() # Obtener la instancia única de la conexión a la base de datos
+        conexion_db = Connect()  # Obtener la instancia única de la conexión a la base de datos
 
         try:
             conexion_db.open_connection()
             resultado = func(*args, **kwargs)
             return resultado
-        
+
         finally:
             conexion_db.close_connection()
 
     return wrapper
+
 
 class Connect:
 
@@ -28,11 +30,10 @@ class Connect:
         if not cls._instancia:
             cls._instancia = super(Connect, cls).__new__(cls, *args, **kwargs)
         return cls._instancia
-    
+
     def __init__(self):
         self.connection = None
         self.cursor = None
-
 
     def open_connection(self):
         # pw = getpass.getpass(f'Enter password for {user}: ')
@@ -41,7 +42,8 @@ class Connect:
         cs = f'(description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-madrid-1.oraclecloud.com))(connect_data=(service_name=g067633159c582f_dbmm_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))'
 
         try:
-            self.connection = oracledb.connect(user=config.get('user'), password=config.get('passaword'), dsn=cs)
+            self.connection = oracledb.connect(user=config.get(
+                'user'), password=config.get('passaword'), dsn=cs)
             self.cursor = self.connection.cursor()
             print(f"Connection established successfully.")
 
@@ -69,7 +71,8 @@ class Connect:
                 file_path = os.path.join(csv_directory, csv_file)
 
                 chunk_size = 10000
-                chunks = pd.read_csv(file_path, chunksize=chunk_size, low_memory=False)
+                chunks = pd.read_csv(
+                    file_path, chunksize=chunk_size, low_memory=False)
 
                 table_name = os.path.splitext(csv_file)[0]
 
@@ -106,7 +109,8 @@ class Connect:
                         self.cursor.executemany(insert_sql, data_to_insert)
 
         self.connection.commit()
-        print(f"Data loaded into individual tables in the schema {schema_name}.")
+        print(
+            f"Data loaded into individual tables in the schema {schema_name}.")
 
     def close_connection(self):
         if self.cursor is not None:
@@ -120,7 +124,6 @@ class Connect:
         cursor.execute(consulta)
         results = cursor.fetchall()
         return results
-
 
 
 if __name__ == '__main__':
