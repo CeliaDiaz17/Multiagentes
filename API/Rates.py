@@ -7,7 +7,7 @@ import sys
 import getpass
 from fastapi.responses import JSONResponse
 from Connect import Connect
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse
 import json
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -58,7 +58,7 @@ class Rates:
             f"<p><a href='{menu_link}'>Volver al menu</a></p>")
         result_string = "\n".join(formatted_output)
 
-        return JSONResponse(content=result_string)
+        return HTMLResponse(content=result_string)
 
     def age_mean_graph(self):
         data = self.create_msg_age_mean()
@@ -89,23 +89,24 @@ class Rates:
 
         result_string = "\n".join(formatted_output)
 
-        return JSONResponse(content=result_string)
+        return HTMLResponse(content=result_string)
 
     def create_msg_age_mean(self):
         db = Connect()
 
         # Realiza la consulta para obtener la media de edad por año
         query_result = db.execute_query(
-            "SELECT current_data_year, AVG(age_recode_21) as mean_age FROM SCHEMA_GOLD.gold_mortalidad_data GROUP BY current_data_year")
+            "SELECT current_data_year, AVG(age_recode_21) as mean_age FROM gold_mortalidad_data GROUP BY current_data_year")
 
         # Formatea los resultados de la consulta
-        age_means_by_year = [{"year": row[0], "mean_age": row[1]}
-                             for row in query_result]
+        age_means_by_year = {row[0]: {"mean_age": row[1]}
+                             for row in query_result}
+        sorted_age_means_by_year = dict(sorted(age_means_by_year.items()))
 
         message = {"message": "MEDIA DE EDAD POR AÑO",
-                   "age_means_by_year": age_means_by_year}
+                   "age_means_by_year": sorted_age_means_by_year}
 
-        return message
+        return [sorted_age_means_by_year, message]
 
     def sex_mean_stats(self):
         message = self.create_msg_sex_stats()
@@ -131,7 +132,7 @@ class Rates:
             f"<p><a href='{menu_link}'>Volver al menu</a></p>")
         result_string = "\n".join(formatted_output)
 
-        return JSONResponse(content=result_string)
+        return HTMLResponse(content=result_string)
 
     def sex_stats_graph(self):
         # Lógica para obtener los datos
@@ -170,7 +171,7 @@ class Rates:
         html_content += f"<p><a href='{menu_link}'>Volver al menú</a></p>"
 
         # Devolver el HTML actualizado
-        return JSONResponse(content=html_content)
+        return HTMLResponse(content=html_content)
 
     def create_msg_sex_stats(self):
         # Inicia una sesión de la base de datos
@@ -178,7 +179,7 @@ class Rates:
 
         # Realiza la consulta para obtener el porcentaje de mujeres y hombres por año
         query_result = db.execute_query(
-            "SELECT current_data_year, SUM(CASE WHEN sex='F' THEN 1 ELSE 0 END) as female_count, SUM(CASE WHEN sex='M' THEN 1 ELSE 0 END) as male_count, COUNT(*) as total_count FROM SCHEMA_GOLD.gold_mortalidad_data GROUP BY current_data_year")
+            "SELECT current_data_year, SUM(CASE WHEN sex=1 THEN 1 ELSE 0 END) as female_count, SUM(CASE WHEN sex=0 THEN 1 ELSE 0 END) as male_count, COUNT(*) as total_count FROM gold_mortalidad_data GROUP BY current_data_year")
 
         # Procesa los resultados de la consulta para calcular los porcentajes
         sex_stats_by_year = {}
@@ -216,7 +217,7 @@ class Rates:
             f"<p><a href='{menu_link}'>Volver al menu</a></p>")
         result_string = "\n".join(formatted_output)
 
-        return JSONResponse(content=result_string)
+        return HTMLResponse(content=result_string)
 
     def race_graph(self):
         # Lógica para obtener los datos
@@ -265,7 +266,7 @@ class Rates:
         html_content += f"<p><a href='{menu_link}'>Volver al menú</a></p>"
 
         # Devolver el HTML actualizado
-        return JSONResponse(content=html_content)
+        return HTMLResponse(content=html_content)
 
     def create_msg_race(self):
         # Inicia una sesión de la base de datos
@@ -274,7 +275,7 @@ class Rates:
         # Realiza la consulta para obtener el conteo de instancias por raza y año
         query_result = db.execute_query("""
             SELECT current_data_year, race, COUNT(*) as count_per_race
-            FROM SCHEMA_GOLD.gold_mortalidad_data
+            FROM gold_mortalidad_data
             GROUP BY current_data_year, race
         """)
 
@@ -334,7 +335,7 @@ class Rates:
             f"<p><a href='{menu_link}'>Volver al menu</a></p>")
         result_string = "\n".join(formatted_output)
 
-        return JSONResponse(content=result_string)
+        return HTMLResponse(content=result_string)
 
     def age_ranges_graph(self):
         # Lógica para obtener los datos
@@ -371,7 +372,7 @@ class Rates:
         html_content += f"<p><a href='{menu_link}'>Volver al menú</a></p>"
 
         # Devolver el HTML actualizado
-        return JSONResponse(content=html_content)
+        return HTMLResponse(content=html_content)
 
     def create_msg_age_ranges(self):
         # Inicia una sesión de la base de datos
@@ -380,7 +381,7 @@ class Rates:
         # Realiza la consulta para obtener el conteo de instancias por edad y año
         query_result = db.execute_query("""
             SELECT current_data_year, age_recode_21, COUNT(*) as count_per_age
-            FROM SCHEMA_GOLD.gold_mortalidad_data
+            FROM gold_mortalidad_data
             GROUP BY current_data_year, age_recode_21
         """)
 
@@ -451,7 +452,7 @@ class Rates:
             f"<p><a href='{menu_link}'>Volver al menu</a></p>")
         result_string = "\n".join(formatted_output)
 
-        return JSONResponse(content=result_string)
+        return HTMLResponse(content=result_string)
 
     def unemployment_graphs(self):
         data = self.create_msg_unemployment()
@@ -521,7 +522,7 @@ class Rates:
         combined_html += f"<p><a href='{menu_link}'>Volver al menú</a></p>"
 
         # Devuelve los gráficos combinados en formato HTML
-        return JSONResponse(content=combined_html)
+        return HTMLResponse(content=combined_html)
 
     def create_msg_unemployment(self):
         db = Connect()
@@ -529,18 +530,18 @@ class Rates:
         query_result = db.execute_query("""
             SELECT
                 YEAR,
-                AVG(MEN) AS MEN,
-                AVG(WOMEN) AS WOMEN,
-                AVG(PRIMARY_SCHOOL) AS PRIMARY_SCHOOL,
-                AVG(HIGH_SCHOOL) AS HIGH_SCHOOL,
-                AVG(ASSOCIATES_DEGREE) AS ASSOCIATES_DEGREE,
-                AVG(PROFESSIONAL_DEGREE) AS PROFESSIONAL_DEGREE,
-                AVG(WHITE) AS WHITE,
-                AVG(BLACK) AS BLACK,
-                AVG(ASIAN) AS ASIAN,
-                AVG(HISPANIC) AS HISPANIC
+                AVG("Men") AS MEN,  -- Asegúrate de que el nombre de la columna coincida con la definición de la base de datos
+                AVG("Women") AS WOMEN,
+                AVG("Primary_School") AS PRIMARY_SCHOOL,
+                AVG("High_School") AS HIGH_SCHOOL,
+                AVG("Associates_Degree") AS ASSOCIATES_DEGREE,
+                AVG("Professional_Degree") AS PROFESSIONAL_DEGREE,
+                AVG("White") AS WHITE,
+                AVG("Black") AS BLACK,
+                AVG("Asian") AS ASIAN,
+                AVG("Hispanic") AS HISPANIC
             FROM
-                SCHEMA_GOLD.gold_suicide_rate_and_unemployment_data
+                gold_suicide_rate_and_unemployment_data
             GROUP BY
                 YEAR""")
 

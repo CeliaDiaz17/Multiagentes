@@ -1,9 +1,11 @@
 .DS_Store
 node_modules
 /dist
+/API/data
 __pycache__
 .venv
-
+config.ps1
+install_firefox.ps1
 
 # local env files
 .env.local
